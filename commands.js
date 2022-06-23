@@ -19,12 +19,38 @@ export async function getGuildMembers(guildId) {
 }
 
 // Installs a command
-export async function InstallGuildCommand(appId, guildId, command) {
+export async function updateUserRole(guildId, userId, status) {
   // API endpoint to get and post guild commands
-  const endpoint = `applications/${appId}/guilds/${guildId}/commands`;
-  // install command
+  const endpoint = `guilds/${guildId}/members/${userId}`;
+  const patchData = {
+    roles: !status ? [] : ['986772592977387521'],
+  };
+  console.log(endpoint);
+  console.log(patchData);
+
   try {
-    await DiscordRequest(endpoint, { method: 'POST', body: command });
+    const res = await DiscordRequest(endpoint, { method: 'PATCH', body: patchData });
+    const data = await res.json();
+    console.log(data);
+    if (data) {
+      return data;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Installs a command
+export async function getGuildRoles(guildId) {
+  // API endpoint to get and post guild commands
+  const endpoint = `/guilds/${guildId}/roles`;
+  try {
+    const res = await DiscordRequest(endpoint, { method: 'GET' });
+    const data = await res.json();
+
+    if (data) {
+      return data;
+    }
   } catch (err) {
     console.error(err);
   }
