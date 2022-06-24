@@ -1,22 +1,12 @@
 import 'dotenv/config';
 import express from 'express';
-import puppeteer from 'puppeteer';
-import {
-  InteractionType,
-  InteractionResponseType,
-  InteractionResponseFlags,
-  MessageComponentTypes,
-  ButtonStyleTypes,
-} from 'discord-interactions';
-import { VerifyDiscordRequest, getRandomEmoji, DiscordRequest } from './utils.js';
-import { getShuffledOptions, getResult } from './game.js';
+import { VerifyDiscordRequest } from './utils.js';
 import {
   getGuildRoles,
   updateUserRole,
   getGuildMembers,
 } from './commands.js';
 import axios from 'axios';
-import querystring from 'querystring';
 
 // Create an express app
 const app = express();
@@ -27,9 +17,8 @@ app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }));
 
 const checkGuildMembersLicenseStatus = async (data) => {
   const users = data;
-  console.log(users);
   const roles = await getGuildRoles(process.env.GUILD_ID);
-  console.log(roles);
+  console.log('Roles List: ' + roles);
   for(let i in users) {
     const user = users[i].user;
     console.log("Checking " + user.username + "'s subscription status from shikari...")
