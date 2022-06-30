@@ -52,3 +52,36 @@ export async function getGuildRoles(guildId) {
     console.error(err);
   }
 }
+
+export async function createCommand() {
+  const appId = process.env.APP_ID;
+  const guildId = process.env.GUILD_ID;
+
+  /**
+   * Globally-scoped slash commands (generally only recommended for production)
+   * See https://discord.com/developers/docs/interactions/application-commands#create-global-application-command
+   */
+  // const globalEndpoint = `applications/${appId}/commands`;
+
+  /**
+   * Guild-scoped slash commands
+   * See https://discord.com/developers/docs/interactions/application-commands#create-guild-application-command
+   */
+  const guildEndpoint = `applications/${appId}/guilds/${guildId}/commands`;
+  const commandBody = {
+    name: 'verify-subscription',
+    description: 'Verify Subscription',
+    type: 1,
+  };
+
+  try {
+    // Send HTTP request with bot token
+    const res = await DiscordRequest(guildEndpoint, {
+      method: 'POST',
+      body: commandBody,
+    });
+    console.log(await res.json());
+  } catch (err) {
+    console.error('Error installing commands: ', err);
+  }
+}
