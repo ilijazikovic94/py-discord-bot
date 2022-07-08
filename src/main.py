@@ -15,7 +15,7 @@ headers = {
 
 def checkSubscriptionStatus(username):
 	endpoint = os.getenv('SHIKARI_WEBSITE_URL') + '/check-subscription/'
-	res = requests.post(endpoint, data={ 'username': username })
+	res = requests.post(endpoint, json={ 'username': username }, headers={"Content-Type": "application/json"})
 	data = res.json()
 	return data
 
@@ -30,32 +30,35 @@ def updateUserRole(userId, status):
 
   if not status:
     if os.getenv('EMPTY_ROLES'):
-      data = {'roles': os.getenv('EMPTY_ROLES').split(',')}
+      current_array = os.getenv('EMPTY_ROLES').split(',');
+      desired_array = [int(numeric_string) for numeric_string in current_array]
+      data = {'roles': desired_array}
     else:
       data = {'roles': []}
   else:
     if os.getenv('SUBSCRIBED_ROLES'):
-      data = {'roles': os.getenv('SUBSCRIBED_ROLES').split(',')}
+      current_array = os.getenv('SUBSCRIBED_ROLES').split(',');
+      desired_array = [int(numeric_string) for numeric_string in current_array]
+      data = {'roles': desired_array}
     else:
       data = {'roles': []}
 
-  res = requests.patch(endpoint, data=data, headers=headers)
+  res = requests.patch(endpoint, json=data, headers=headers)
   data = res.json()
   return data
 
 def verifyShikariSubscription():
   members = getGuildMembers()
-  for i in members:
-  	user = members[i].user;
-  	print("Checking " + user.username + "'s subscription status from shikari...")
-  	response = checkSubscriptionStatus(user.username)
-  	licenseStatus = response.data.licensed;
+  for member in members:
+  	user = member["user"];
+  	print("Checking " + user["username"] + "'s subscription status from shikari...")
+  	response = checkSubscriptionStatus(user["username"])
+  	licenseStatus = response["licensed"];
   	if licenseStatus:
-  		print(user.username + "'s subscription status: Subscribed");
+  		print(user["username"] + "'s subscription status: Subscribed");
   	else:
-  		print(user.username + "'s subscription status: Not Subscribed");
-  	updateUserRole(user.id, licenseStatus)
-  	return True
+  		print(user["username"] + "'s subscription status: Not Subscribed");
+  	return updateUserRole(user["id"], licenseStatus)
 
 @aiocron.crontab('0 22 * * *')
 async def runCronJob():
@@ -71,8 +74,12 @@ async def hello(ctx):
 
 @bot.slash_command(name = "verify-subscription", description = "Verify subscription")
 async def verifySubscription(ctx):
-  verifyShikariSubscription();
-  await ctx.respond("Updated successfully!")
+  data = verifyShikariSubscription();
+  print(data)
+  if "message" in data:
+  	await ctx.respond(data["message"])
+  else:	
+    await ctx.respond("Updated successfully!")
 
 bot.run(os.getenv('TOKEN')) # run the bot with the token
 
