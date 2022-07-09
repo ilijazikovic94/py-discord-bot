@@ -11,12 +11,6 @@ intents = discord.Intents.all()
 
 bot = commands.Bot(command_prefix='', intents=intents)
 
-headers = {
-	"Content-Type": "application/json; charset=UTF-8",
-	"User-Agent": "DiscordBot (https://github.com/discord/discord-app, 1.0.0)",
-	"Authorization": "Bot " + os.getenv('TOKEN') 
-}
-
 def checkSubscriptionStatus(username):
 	endpoint = os.getenv('SHIKARI_WEBSITE_URL') + '/check-subscription/'
 	res = requests.post(endpoint, json={ 'username': username }, headers={"Content-Type": "application/json"})
@@ -24,12 +18,17 @@ def checkSubscriptionStatus(username):
 	return data
 
 async def verifyShikariSubscription():
-  takenGuild = bot.get_guild(986772331944886313)
+  takenGuild = bot.get_guild(int(os.getenv('GUILD_ID')))
   members = await takenGuild.fetch_members(limit=None).flatten()
+  # need to find correct role id to subscribe user using this line
   print(takenGuild.roles)
+
+  role = discord.utils.get(takenGuild.roles, id=int(os.getenv('SUBSCRIBED_ROLE')))
   for member in members:
+  	# to avoid bot and server administrator for checking subscription
   	if (not member.bot) and (member.name != os.getenv('SERVER_ADMIN_NAME')):
 	  	print("Checking " + member.name + "'s subscription status from shikari...")
+	  	# getting subscription status from shikari website
 	  	response = checkSubscriptionStatus(member.name)
 	  	licenseStatus = response["licensed"];
 	  	if licenseStatus:
@@ -37,7 +36,7 @@ async def verifyShikariSubscription():
 	  	else:
 	  		print(member.name + "'s subscription status: Not Subscribed");
 
-	  	role = discord.utils.get(takenGuild.roles, id=int(os.getenv('SUBSCRIBED_ROLE')))
+	  	# add/remove role based on license status
 	  	if licenseStatus:
 	  	    await member.add_roles(role)
 	  	else:
