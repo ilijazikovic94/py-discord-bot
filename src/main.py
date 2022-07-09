@@ -1,11 +1,15 @@
 import discord
+from discord.ext import commands
 import os # default module
 from dotenv import load_dotenv
 import requests
 import aiocron
 
 load_dotenv() # load all the variables from the env file
-bot = discord.Bot(debug_guilds=[986772331944886313])
+
+intents = discord.Intents.all()
+
+bot = commands.Bot(command_prefix='', intents=intents)
 
 headers = {
 	"Content-Type": "application/json; charset=UTF-8",
@@ -19,50 +23,30 @@ def checkSubscriptionStatus(username):
 	data = res.json()
 	return data
 
-def getGuildMembers():
-  endpoint = "https://discord.com/api/v10/guilds/986772331944886313/members"
-  res = requests.get(endpoint, headers=headers)
-  data = res.json()
-  return data
-
-def updateUserRole(userId, status):
-  endpoint = "https://discord.com/api/v10/guilds/986772331944886313/members/" + userId
-
-  if not status:
-    if os.getenv('EMPTY_ROLES'):
-      current_array = os.getenv('EMPTY_ROLES').split(',');
-      desired_array = [int(numeric_string) for numeric_string in current_array]
-      data = {'roles': desired_array}
-    else:
-      data = {'roles': []}
-  else:
-    if os.getenv('SUBSCRIBED_ROLES'):
-      current_array = os.getenv('SUBSCRIBED_ROLES').split(',');
-      desired_array = [int(numeric_string) for numeric_string in current_array]
-      data = {'roles': desired_array}
-    else:
-      data = {'roles': []}
-
-  res = requests.patch(endpoint, json=data, headers=headers)
-  data = res.json()
-  return data
-
-def verifyShikariSubscription():
-  members = getGuildMembers()
+async def verifyShikariSubscription():
+  takenGuild = bot.get_guild(986772331944886313)
+  members = await takenGuild.fetch_members(limit=None).flatten()
+  print(takenGuild.roles)
   for member in members:
-  	user = member["user"];
-  	print("Checking " + user["username"] + "'s subscription status from shikari...")
-  	response = checkSubscriptionStatus(user["username"])
-  	licenseStatus = response["licensed"];
-  	if licenseStatus:
-  		print(user["username"] + "'s subscription status: Subscribed");
-  	else:
-  		print(user["username"] + "'s subscription status: Not Subscribed");
-  	return updateUserRole(user["id"], licenseStatus)
+  	if (not member.bot) and (member.name != os.getenv('SERVER_ADMIN_NAME')):
+	  	print("Checking " + member.name + "'s subscription status from shikari...")
+	  	response = checkSubscriptionStatus(member.name)
+	  	licenseStatus = response["licensed"];
+	  	if licenseStatus:
+	  		print(member.name + "'s subscription status: Subscribed");
+	  	else:
+	  		print(member.name + "'s subscription status: Not Subscribed");
+
+	  	role = discord.utils.get(takenGuild.roles, id=int(os.getenv('SUBSCRIBED_ROLE')))
+	  	if licenseStatus:
+	  	    await member.add_roles(role)
+	  	else:
+	  		await member.remove_roles(role)
+  return True
 
 @aiocron.crontab('0 22 * * *')
 async def runCronJob():
-  verifyShikariSubscription();
+  data = await verifyShikariSubscription();
 
 @bot.event
 async def on_ready():
@@ -74,12 +58,8 @@ async def hello(ctx):
 
 @bot.slash_command(name = "verify-subscription", description = "Verify subscription")
 async def verifySubscription(ctx):
-  data = verifyShikariSubscription();
-  print(data)
-  if "message" in data:
-  	await ctx.respond(data["message"])
-  else:	
-    await ctx.respond("Updated successfully!")
+  data = await verifyShikariSubscription();
+  await ctx.respond("Updated successfully!")
 
 bot.run(os.getenv('TOKEN')) # run the bot with the token
 
